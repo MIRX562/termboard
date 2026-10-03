@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mirxlab.termboard.data.KeyboardPreferences
-import com.mirxlab.termboard.ui.theme.TermboardTheme
+import com.mirxlab.termboard.data.models.KeyboardMode
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -49,11 +49,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TermboardTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainSettingsScreen(modifier = Modifier.padding(innerPadding))
-                }
-            }
+            TermboardApp()
         }
     }
 }
@@ -64,10 +60,15 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     val prefs = remember { KeyboardPreferences(context) }
 
-    val opacity by prefs.opacityFlow.collectAsState(initial = 1.0f)
+    val opacity by prefs.opacityFlow.collectAsState(initial = 0.85f)
     val hapticEnabled by prefs.hapticEnabledFlow.collectAsState(initial = true)
-    val splitModeEnabled by prefs.splitModeEnabledFlow.collectAsState(initial = false)
+    val splitModeEnabled by prefs.splitModeEnabledFlow.collectAsState(initial = true)
     val splitModeAuto by prefs.splitModeAutoFlow.collectAsState(initial = true)
+    val centerGapRatio by prefs.centerGapRatioFlow.collectAsState(initial = 0.75f)
+    val keyboardHeightDp by prefs.keyboardHeightDpFlow.collectAsState(initial = 300)
+    val modifierHoldDurationMs by prefs.modifierHoldDurationMsFlow.collectAsState(initial = 260)
+    val keyboardModeOverride by prefs.keyboardModeOverrideFlow.collectAsState(initial = null)
+    val darkTheme by prefs.darkThemeFlow.collectAsState(initial = true)
 
     var testInputText by remember { mutableStateOf("") }
 
@@ -84,7 +85,7 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Lightweight Android Input Method Editor",
+            text = "Programmable Split Mechanical Tablet Keyboard (QMK / Sofle Inspired)",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -137,7 +138,7 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Preferences",
+                    text = "Keyboard Settings",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
@@ -146,7 +147,7 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
 
                 // Opacity Slider
                 Text(
-                    text = "Keyboard Opacity: ${(opacity * 100).toInt()}%",
+                    text = "Keycap Opacity: ${(opacity * 100).toInt()}%",
                     fontSize = 14.sp
                 )
                 Slider(
@@ -154,6 +155,73 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
                     onValueChange = { scope.launch { prefs.setOpacity(it) } },
                     valueRange = 0.2f..1.0f
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Center Gap Ratio Slider
+                Text(
+                    text = "Split center gap: ${(centerGapRatio / (2f + centerGapRatio) * 100).toInt()}%",
+                    fontSize = 14.sp
+                )
+                Slider(
+                    value = centerGapRatio,
+                    onValueChange = { scope.launch { prefs.setCenterGapRatio(it) } },
+                    valueRange = 0.15f..1.5f
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Keyboard height: ${keyboardHeightDp}dp",
+                    fontSize = 14.sp
+                )
+                Slider(
+                    value = keyboardHeightDp.toFloat(),
+                    onValueChange = { scope.launch { prefs.setKeyboardHeightDp(it.toInt()) } },
+                    valueRange = 240f..360f,
+                    steps = 11
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Modifier hold activates: ${modifierHoldDurationMs}ms",
+                    fontSize = 14.sp
+                )
+                Slider(
+                    value = modifierHoldDurationMs.toFloat(),
+                    onValueChange = { scope.launch { prefs.setModifierHoldDurationMs(it.toInt()) } },
+                    valueRange = 120f..500f,
+                    steps = 18
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Dark Theme Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Dark Mechanical Theme",
+                        modifier = Modifier.weight(1f),
+                        fontSize = 14.sp
+                    )
+                    Switch(
+                        checked = darkTheme,
+                        onCheckedChange = { scope.launch { prefs.setDarkTheme(it) } }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { scope.launch { prefs.setKeyboardModeOverride(null) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = keyboardModeOverride != null
+                ) {
+                    Text("Use automatic keyboard layout")
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -175,13 +243,13 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Split Mode Manual Toggle
+                // Force Split Mode
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Force Split Mode",
+                        text = "Force Sofle Ergonomic Split Mode",
                         modifier = Modifier.weight(1f),
                         fontSize = 14.sp
                     )
@@ -193,13 +261,13 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Split Mode Auto Toggle
+                // Auto Split on Tablet
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Auto Split on Wide Screens (>600dp)",
+                        text = "Auto Split in Landscape (>600dp)",
                         modifier = Modifier.weight(1f),
                         fontSize = 14.sp
                     )
@@ -220,7 +288,7 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Test Keyboard",
+                    text = "Type Tester",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
@@ -228,7 +296,7 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
                 OutlinedTextField(
                     value = testInputText,
                     onValueChange = { testInputText = it },
-                    label = { Text("Type here to test Termboard...") },
+                    label = { Text("Tap here to test Termboard split keyboard...") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

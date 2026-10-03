@@ -6,8 +6,16 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.mirxlab.termboard.data.models.Layer
+import com.mirxlab.termboard.data.models.Combo
+import com.mirxlab.termboard.data.models.KeyboardMode
+import com.mirxlab.termboard.data.models.Macro
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -22,10 +30,107 @@ class KeyboardPreferences(private val context: Context) {
         val KEY_SPLIT_MODE_ENABLED = booleanPreferencesKey("split_mode_enabled")
         val KEY_SPLIT_MODE_AUTO = booleanPreferencesKey("split_mode_auto")
         val KEY_RECENT_EMOJIS = stringPreferencesKey("recent_emojis")
+        val KEY_CENTER_GAP_RATIO = floatPreferencesKey("center_gap_ratio")
+        val KEY_DARK_THEME = booleanPreferencesKey("dark_theme")
+        val KEY_LAYERS = stringPreferencesKey("keyboard_layers")
+        val KEY_COMBOS = stringPreferencesKey("keyboard_combos")
+        val KEY_KEYBOARD_HEIGHT = intPreferencesKey("keyboard_height_dp")
+        val KEY_MODIFIER_HOLD_DURATION = intPreferencesKey("modifier_hold_duration_ms")
+        val KEY_KEYBOARD_MODE_OVERRIDE = stringPreferencesKey("keyboard_mode_override")
+        val KEY_MACROS = stringPreferencesKey("keyboard_macros")
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     val opacityFlow: Flow<Float> = context.dataStore.data.map { prefs ->
-        prefs[KEY_OPACITY] ?: 1.0f
+        prefs[KEY_OPACITY] ?: 0.85f
+    }
+
+    val centerGapRatioFlow: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CENTER_GAP_RATIO] ?: 0.75f
+    }
+
+    val keyboardHeightDpFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_KEYBOARD_HEIGHT] ?: 300
+    }
+
+    val modifierHoldDurationMsFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_MODIFIER_HOLD_DURATION] ?: 260
+    }
+
+    val keyboardModeOverrideFlow: Flow<KeyboardMode?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_KEYBOARD_MODE_OVERRIDE]?.let { runCatching { KeyboardMode.valueOf(it) }.getOrNull() }
+    }
+
+    val darkThemeFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DARK_THEME] ?: true
+    }
+
+    val layersFlow: Flow<List<Layer>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LAYERS]?.let { raw ->
+            runCatching { json.decodeFromString<List<Layer>>(raw) }.getOrDefault(emptyList())
+        } ?: emptyList()
+    }
+
+    val combosFlow: Flow<List<Combo>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_COMBOS]?.let { raw ->
+            runCatching { json.decodeFromString<List<Combo>>(raw) }.getOrDefault(emptyList())
+        } ?: emptyList()
+    }
+
+    val macrosFlow: Flow<List<Macro>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_MACROS]?.let { raw ->
+            runCatching { json.decodeFromString<List<Macro>>(raw) }.getOrDefault(emptyList())
+        } ?: emptyList()
+    }
+
+    suspend fun setCenterGapRatio(ratio: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CENTER_GAP_RATIO] = ratio.coerceIn(0.15f, 1.5f)
+        }
+    }
+
+    suspend fun setKeyboardHeightDp(heightDp: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_KEYBOARD_HEIGHT] = heightDp.coerceIn(240, 360)
+        }
+    }
+
+    suspend fun setModifierHoldDurationMs(durationMs: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_MODIFIER_HOLD_DURATION] = durationMs.coerceIn(120, 500)
+        }
+    }
+
+    suspend fun setKeyboardModeOverride(mode: KeyboardMode?) {
+        context.dataStore.edit { prefs ->
+            if (mode == null) prefs.remove(KEY_KEYBOARD_MODE_OVERRIDE)
+            else prefs[KEY_KEYBOARD_MODE_OVERRIDE] = mode.name
+        }
+    }
+
+    suspend fun setLayers(layers: List<Layer>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAYERS] = json.encodeToString(layers)
+        }
+    }
+
+    suspend fun setCombos(combos: List<Combo>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_COMBOS] = json.encodeToString(combos)
+        }
+    }
+
+    suspend fun setMacros(macros: List<Macro>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_MACROS] = json.encodeToString(macros)
+        }
+    }
+
+    suspend fun setDarkTheme(dark: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_DARK_THEME] = dark
+        }
     }
 
     val hapticEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
