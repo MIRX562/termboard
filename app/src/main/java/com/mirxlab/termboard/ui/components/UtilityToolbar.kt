@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -116,19 +117,26 @@ fun UtilityToolbar(
         }
 
         // Keyboard Mode Switcher (Standard vs Split)
-        IconButton(
+        TextButton(
             onClick = onToggleKeyboardMode,
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier.height(32.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Splitscreen,
-                contentDescription = "Toggle Split / Standard Mode",
-                tint = if (currentKeyboardMode == KeyboardMode.SPLIT) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Splitscreen,
+                    contentDescription = null,
+                    tint = if (currentKeyboardMode == KeyboardMode.SPLIT) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+                Text(
+                    text = if (currentKeyboardMode == KeyboardMode.SPLIT) "Split" else "Standard",
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }

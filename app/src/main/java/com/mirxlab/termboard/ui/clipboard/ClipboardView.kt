@@ -21,24 +21,33 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mirxlab.termboard.data.ClipEntity
+import com.mirxlab.termboard.ui.components.SearchKeypad
 
 @Composable
 fun ClipboardView(
@@ -48,6 +57,10 @@ fun ClipboardView(
     backgroundColor: Color = MaterialTheme.colorScheme.surface
 ) {
     val clips by clipboardWrapper.getAllClips().collectAsState(initial = emptyList())
+    val focusManager = LocalFocusManager.current
+    var query by remember { mutableStateOf("") }
+    var showSearchKeys by remember { mutableStateOf(false) }
+    val filteredClips = clips.filter { it.text.contains(query.trim(), ignoreCase = true) }
 
     Column(
         modifier = Modifier
@@ -89,15 +102,45 @@ fun ClipboardView(
             }
         }
 
-        if (clips.isEmpty()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                .onFocusChanged { if (it.isFocused) showSearchKeys = true },
+            singleLine = true,
+            placeholder = { Text("Search clipboard") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    TextButton(onClick = { query = "" }) { Text("Clear") }
+                }
+            }
+        )
+
+        if (showSearchKeys) {
+            SearchKeypad(
+                modifier = Modifier.weight(1f),
+                onCharacter = { query += it },
+                onBackspace = { query = query.dropLast(1) },
+                onSpace = { query += " " },
+                onDone = {
+                    showSearchKeys = false
+                    focusManager.clearFocus()
+                }
+            )
+        } else if (filteredClips.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.weight(1f).fillMaxWidth()
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Clipboard history is empty.\nCopied items will appear here.",
+                    text = if (clips.isEmpty()) {
+                        "Clipboard history is empty.\nCopied items will appear here."
+                    } else {
+                        "No clipboard items match \"$query\"."
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
@@ -105,12 +148,13 @@ fun ClipboardView(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(clips, key = { it.id }) { clip ->
+                items(filteredClips, key = { it.id }) { clip ->
                     ClipItemCard(
                         clip = clip,
                         onClipClick = { onClipSelected(clip.text) },

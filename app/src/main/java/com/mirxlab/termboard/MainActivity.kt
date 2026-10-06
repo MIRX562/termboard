@@ -61,13 +61,11 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
     val prefs = remember { KeyboardPreferences(context) }
 
     val opacity by prefs.opacityFlow.collectAsState(initial = 0.85f)
-    val hapticEnabled by prefs.hapticEnabledFlow.collectAsState(initial = true)
-    val splitModeEnabled by prefs.splitModeEnabledFlow.collectAsState(initial = true)
     val splitModeAuto by prefs.splitModeAutoFlow.collectAsState(initial = true)
-    val centerGapRatio by prefs.centerGapRatioFlow.collectAsState(initial = 0.75f)
-    val keyboardHeightDp by prefs.keyboardHeightDpFlow.collectAsState(initial = 300)
+    val portraitCenterGapRatio by prefs.portraitCenterGapRatioFlow.collectAsState(initial = 1.1f)
+    val landscapeCenterGapRatio by prefs.landscapeCenterGapRatioFlow.collectAsState(initial = 0.75f)
+    val splitKeyboardHeightDp by prefs.splitKeyboardHeightDpFlow.collectAsState(initial = 300)
     val modifierHoldDurationMs by prefs.modifierHoldDurationMsFlow.collectAsState(initial = 260)
-    val keyboardModeOverride by prefs.keyboardModeOverrideFlow.collectAsState(initial = null)
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = true)
 
     var testInputText by remember { mutableStateOf("") }
@@ -158,26 +156,38 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Center Gap Ratio Slider
+                // Portrait Center Gap Ratio Slider
                 Text(
-                    text = "Split center gap: ${(centerGapRatio / (2f + centerGapRatio) * 100).toInt()}%",
+                    text = "Portrait split gap: ${(portraitCenterGapRatio / (2f + portraitCenterGapRatio) * 100).toInt()}%",
                     fontSize = 14.sp
                 )
                 Slider(
-                    value = centerGapRatio,
-                    onValueChange = { scope.launch { prefs.setCenterGapRatio(it) } },
+                    value = portraitCenterGapRatio,
+                    onValueChange = { scope.launch { prefs.setPortraitCenterGapRatio(it) } },
                     valueRange = 0.15f..1.5f
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Keyboard height: ${keyboardHeightDp}dp",
+                    text = "Landscape split gap: ${(landscapeCenterGapRatio / (2f + landscapeCenterGapRatio) * 100).toInt()}%",
                     fontSize = 14.sp
                 )
                 Slider(
-                    value = keyboardHeightDp.toFloat(),
-                    onValueChange = { scope.launch { prefs.setKeyboardHeightDp(it.toInt()) } },
+                    value = landscapeCenterGapRatio,
+                    onValueChange = { scope.launch { prefs.setLandscapeCenterGapRatio(it) } },
+                    valueRange = 0.15f..1.5f
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Split keyboard height: ${splitKeyboardHeightDp}dp",
+                    fontSize = 14.sp
+                )
+                Slider(
+                    value = splitKeyboardHeightDp.toFloat(),
+                    onValueChange = { scope.launch { prefs.setSplitKeyboardHeightDp(it.toInt()) } },
                     valueRange = 240f..360f,
                     steps = 11
                 )
@@ -210,52 +220,6 @@ fun MainSettingsScreen(modifier: Modifier = Modifier) {
                     Switch(
                         checked = darkTheme,
                         onCheckedChange = { scope.launch { prefs.setDarkTheme(it) } }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = { scope.launch { prefs.setKeyboardModeOverride(null) } },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = keyboardModeOverride != null
-                ) {
-                    Text("Use automatic keyboard layout")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Haptic Feedback Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Haptic Feedback",
-                        modifier = Modifier.weight(1f),
-                        fontSize = 14.sp
-                    )
-                    Switch(
-                        checked = hapticEnabled,
-                        onCheckedChange = { scope.launch { prefs.setHapticEnabled(it) } }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Force Split Mode
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Force Sofle Ergonomic Split Mode",
-                        modifier = Modifier.weight(1f),
-                        fontSize = 14.sp
-                    )
-                    Switch(
-                        checked = splitModeEnabled,
-                        onCheckedChange = { scope.launch { prefs.setSplitModeEnabled(it) } }
                     )
                 }
 

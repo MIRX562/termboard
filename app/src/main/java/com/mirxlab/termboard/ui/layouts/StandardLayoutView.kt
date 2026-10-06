@@ -1,9 +1,11 @@
 package com.mirxlab.termboard.ui.layouts
 
 import android.view.inputmethod.InputConnection
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,7 +16,7 @@ import com.mirxlab.termboard.data.models.ModifierStatus
 import com.mirxlab.termboard.data.models.ModifierType
 import com.mirxlab.termboard.engine.KeyboardEngine
 import com.mirxlab.termboard.engine.KeyboardKeyCatalog
-import com.mirxlab.termboard.engine.KeyboardLayouts
+import com.mirxlab.termboard.engine.StandardKeyboardLayout
 import com.mirxlab.termboard.engine.KeyActionLabel
 import com.mirxlab.termboard.ui.components.QmkKeyButton
 import com.mirxlab.termboard.ui.components.toDisplayLabel
@@ -34,10 +36,16 @@ fun StandardLayoutView(
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(2.dp)
+            .fillMaxSize()
+            .padding(2.dp),
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        KeyboardLayouts.standardRows.forEach { row ->
+        val rows = if (settings.compactStandardLayout) {
+            StandardKeyboardLayout.compactRows
+        } else {
+            StandardKeyboardLayout.rows
+        }
+        rows.forEach { row ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 row.forEach { keyDef ->
                     val resolvedAction = engine.resolveAction(keyDef)

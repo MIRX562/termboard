@@ -7,6 +7,7 @@ enum class KeyboardMode {
 
 data class KeyboardSettings(
     val mode: KeyboardMode = KeyboardMode.SPLIT,
+    val compactStandardLayout: Boolean = true,
     val centerGapRatio: Float = 0.75f,
     val keyHeightDp: Int = 46,
     val keyboardHeightDp: Int = 300,

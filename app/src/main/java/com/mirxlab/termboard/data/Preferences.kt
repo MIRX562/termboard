@@ -27,17 +27,21 @@ class KeyboardPreferences(private val context: Context) {
         val KEY_OPACITY = floatPreferencesKey("keyboard_opacity")
         val KEY_HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
         val KEY_HAPTIC_INTENSITY = floatPreferencesKey("haptic_intensity")
-        val KEY_SPLIT_MODE_ENABLED = booleanPreferencesKey("split_mode_enabled")
         val KEY_SPLIT_MODE_AUTO = booleanPreferencesKey("split_mode_auto")
         val KEY_RECENT_EMOJIS = stringPreferencesKey("recent_emojis")
         val KEY_CENTER_GAP_RATIO = floatPreferencesKey("center_gap_ratio")
+        val KEY_PORTRAIT_CENTER_GAP_RATIO = floatPreferencesKey("portrait_center_gap_ratio")
+        val KEY_LANDSCAPE_CENTER_GAP_RATIO = floatPreferencesKey("landscape_center_gap_ratio")
         val KEY_DARK_THEME = booleanPreferencesKey("dark_theme")
         val KEY_LAYERS = stringPreferencesKey("keyboard_layers")
         val KEY_COMBOS = stringPreferencesKey("keyboard_combos")
         val KEY_KEYBOARD_HEIGHT = intPreferencesKey("keyboard_height_dp")
+        val KEY_STANDARD_KEYBOARD_HEIGHT = intPreferencesKey("standard_keyboard_height_dp")
         val KEY_MODIFIER_HOLD_DURATION = intPreferencesKey("modifier_hold_duration_ms")
         val KEY_KEYBOARD_MODE_OVERRIDE = stringPreferencesKey("keyboard_mode_override")
         val KEY_MACROS = stringPreferencesKey("keyboard_macros")
+        val KEY_STANDARD_LAYERS = stringPreferencesKey("standard_keyboard_layers")
+        val KEY_STANDARD_COMPACT = booleanPreferencesKey("standard_keyboard_compact")
     }
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -50,8 +54,20 @@ class KeyboardPreferences(private val context: Context) {
         prefs[KEY_CENTER_GAP_RATIO] ?: 0.75f
     }
 
-    val keyboardHeightDpFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+    val portraitCenterGapRatioFlow: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PORTRAIT_CENTER_GAP_RATIO] ?: 1.1f
+    }
+
+    val landscapeCenterGapRatioFlow: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LANDSCAPE_CENTER_GAP_RATIO] ?: prefs[KEY_CENTER_GAP_RATIO] ?: 0.75f
+    }
+
+    val splitKeyboardHeightDpFlow: Flow<Int> = context.dataStore.data.map { prefs ->
         prefs[KEY_KEYBOARD_HEIGHT] ?: 300
+    }
+
+    val standardKeyboardHeightDpFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_STANDARD_KEYBOARD_HEIGHT] ?: 250
     }
 
     val modifierHoldDurationMsFlow: Flow<Int> = context.dataStore.data.map { prefs ->
@@ -72,6 +88,16 @@ class KeyboardPreferences(private val context: Context) {
         } ?: emptyList()
     }
 
+    val standardLayersFlow: Flow<List<Layer>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_STANDARD_LAYERS]?.let { raw ->
+            runCatching { json.decodeFromString<List<Layer>>(raw) }.getOrDefault(emptyList())
+        } ?: emptyList()
+    }
+
+    val standardCompactFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_STANDARD_COMPACT] ?: true
+    }
+
     val combosFlow: Flow<List<Combo>> = context.dataStore.data.map { prefs ->
         prefs[KEY_COMBOS]?.let { raw ->
             runCatching { json.decodeFromString<List<Combo>>(raw) }.getOrDefault(emptyList())
@@ -90,9 +116,27 @@ class KeyboardPreferences(private val context: Context) {
         }
     }
 
-    suspend fun setKeyboardHeightDp(heightDp: Int) {
+    suspend fun setPortraitCenterGapRatio(ratio: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_PORTRAIT_CENTER_GAP_RATIO] = ratio.coerceIn(0.15f, 1.5f)
+        }
+    }
+
+    suspend fun setLandscapeCenterGapRatio(ratio: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LANDSCAPE_CENTER_GAP_RATIO] = ratio.coerceIn(0.15f, 1.5f)
+        }
+    }
+
+    suspend fun setSplitKeyboardHeightDp(heightDp: Int) {
         context.dataStore.edit { prefs ->
             prefs[KEY_KEYBOARD_HEIGHT] = heightDp.coerceIn(240, 360)
+        }
+    }
+
+    suspend fun setStandardKeyboardHeightDp(heightDp: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_STANDARD_KEYBOARD_HEIGHT] = heightDp.coerceIn(190, 340)
         }
     }
 
@@ -112,6 +156,18 @@ class KeyboardPreferences(private val context: Context) {
     suspend fun setLayers(layers: List<Layer>) {
         context.dataStore.edit { prefs ->
             prefs[KEY_LAYERS] = json.encodeToString(layers)
+        }
+    }
+
+    suspend fun setStandardLayers(layers: List<Layer>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_STANDARD_LAYERS] = json.encodeToString(layers)
+        }
+    }
+
+    suspend fun setStandardCompact(compact: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_STANDARD_COMPACT] = compact
         }
     }
 
@@ -141,10 +197,6 @@ class KeyboardPreferences(private val context: Context) {
         prefs[KEY_HAPTIC_INTENSITY] ?: 1.0f
     }
 
-    val splitModeEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_SPLIT_MODE_ENABLED] ?: false
-    }
-
     val splitModeAutoFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_SPLIT_MODE_AUTO] ?: true
     }
@@ -169,12 +221,6 @@ class KeyboardPreferences(private val context: Context) {
     suspend fun setHapticIntensity(intensity: Float) {
         context.dataStore.edit { prefs ->
             prefs[KEY_HAPTIC_INTENSITY] = intensity
-        }
-    }
-
-    suspend fun setSplitModeEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_SPLIT_MODE_ENABLED] = enabled
         }
     }
 

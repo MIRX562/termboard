@@ -1,6 +1,7 @@
 package com.mirxlab.termboard.engine
 
 import com.mirxlab.termboard.data.models.KeyAction
+import com.mirxlab.termboard.data.models.ArrowDirection
 import com.mirxlab.termboard.data.models.Combo
 import com.mirxlab.termboard.data.models.KeyDefinition
 import com.mirxlab.termboard.data.models.LayerActivationMode
@@ -64,7 +65,7 @@ class KeyboardEngineTest {
 
     @Test
     fun testLayoutDefinitionsShareKeys() {
-        val standardKeyQ = KeyboardLayouts.standardRows[2].find { it.id == "KEY_Q" }
+        val standardKeyQ = StandardKeyboardLayout.rows[2].find { it.id == "KEY_Q" }
         val splitKeyQ = KeyboardLayouts.splitLeftRows[1].find { it.id == "KEY_Q" }
 
         assertTrue(standardKeyQ != null)
@@ -131,9 +132,21 @@ class KeyboardEngineTest {
     }
 
     @Test
+    fun defaultModifierRowsUseRequestedOrder() {
+        assertEquals(
+            listOf("Fn", "Meta", "Alt", "Ctrl", "Space"),
+            KeyboardLayouts.splitLeftThumbCluster.map { it.baseLabel }
+        )
+        assertEquals(
+            listOf("Space", "Ctrl", "Alt", "Meta", "Fn"),
+            KeyboardLayouts.splitRightThumbCluster.map { it.baseLabel }
+        )
+    }
+
+    @Test
     fun keyCatalogCoversEveryLayoutActionAndSecondaryVariant() {
         val layoutKeys = (
-            KeyboardLayouts.standardRows.flatten() +
+            StandardKeyboardLayout.rows.flatten() +
                 KeyboardLayouts.splitLeftRows.flatten() +
                 KeyboardLayouts.splitRightRows.flatten() +
                 KeyboardLayouts.splitLeftThumbCluster +
@@ -230,5 +243,28 @@ class KeyboardEngineTest {
         assertTrue(splitKeyIds.containsAll(setOf(
             "KEY_BACKTICK", "KEY_MINUS", "KEY_EQUAL", "KEY_LBRACKET", "KEY_RBRACKET", "KEY_QUOTE"
         )))
+    }
+
+    @Test
+    fun compactStandardLayoutHasOnlyBaseAndNavLayers() {
+        assertEquals(setOf("BASE", "NAV"), StandardKeyboardLayout.defaultLayers.keys)
+        val compactKeyIds = StandardKeyboardLayout.compactRows.flatten().map { it.id }.toSet()
+        assertFalse(compactKeyIds.contains("KEY_F1"))
+        assertFalse(compactKeyIds.contains("KEY_1"))
+        assertFalse(compactKeyIds.contains("KEY_TAB"))
+        assertFalse(compactKeyIds.contains("KEY_CAPS"))
+        assertFalse(compactKeyIds.contains("KEY_SHIFT_R"))
+        assertTrue(compactKeyIds.containsAll(setOf("KEY_Q", "KEY_A", "KEY_Z", "KEY_ENTER", "KEY_CUT", "KEY_COPY", "KEY_PASTE", "KEY_BSPACE")))
+        assertFalse(compactKeyIds.contains("KEY_CTRL_R"))
+        assertEquals(
+            listOf("KEY_FN_L", "KEY_META", "KEY_ALT_L", "KEY_CTRL_L", "KEY_SPACE", "KEY_PASTE", "KEY_CUT", "KEY_COPY", "KEY_BSPACE"),
+            StandardKeyboardLayout.compactRows.last().map { it.id }
+        )
+
+        val navMappings = StandardKeyboardLayout.defaultLayers.getValue("NAV").keyMappings
+        assertEquals(KeyAction.Text("1"), navMappings["KEY_Q"])
+        assertEquals(KeyAction.KeyCode(android.view.KeyEvent.KEYCODE_F1), navMappings["KEY_A"])
+        assertEquals(KeyAction.Arrow(ArrowDirection.LEFT), navMappings["KEY_H"])
+        assertEquals(KeyAction.Text("~"), navMappings["KEY_Z"])
     }
 }

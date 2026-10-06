@@ -24,6 +24,7 @@ import com.mirxlab.termboard.data.models.KeyboardMode
 import com.mirxlab.termboard.data.models.KeyboardSettings
 import com.mirxlab.termboard.engine.KeyboardEngine
 import com.mirxlab.termboard.engine.KeyboardLayouts
+import com.mirxlab.termboard.engine.StandardKeyboardLayout
 import com.mirxlab.termboard.ime.CustomInputMethodService
 import com.mirxlab.termboard.ime.InputConnectionUtils
 import com.mirxlab.termboard.ime.InputMode
@@ -46,30 +47,39 @@ fun KeyboardView(service: CustomInputMethodService) {
 
     val opacity by prefs.opacityFlow.collectAsState(initial = 0.85f)
     val hapticEnabled by prefs.hapticEnabledFlow.collectAsState(initial = true)
-    val splitModeEnabled by prefs.splitModeEnabledFlow.collectAsState(initial = true)
     val splitModeAuto by prefs.splitModeAutoFlow.collectAsState(initial = true)
-    val centerGapRatio by prefs.centerGapRatioFlow.collectAsState(initial = 0.75f)
-    val keyboardHeightDp by prefs.keyboardHeightDpFlow.collectAsState(initial = 300)
+    val portraitCenterGapRatio by prefs.portraitCenterGapRatioFlow.collectAsState(initial = 1.1f)
+    val landscapeCenterGapRatio by prefs.landscapeCenterGapRatioFlow.collectAsState(initial = 0.75f)
+    val splitKeyboardHeightDp by prefs.splitKeyboardHeightDpFlow.collectAsState(initial = 300)
+    val standardKeyboardHeightDp by prefs.standardKeyboardHeightDpFlow.collectAsState(initial = 250)
     val modifierHoldDurationMs by prefs.modifierHoldDurationMsFlow.collectAsState(initial = 260)
     val keyboardModeOverride by prefs.keyboardModeOverrideFlow.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
     val darkTheme by prefs.darkThemeFlow.collectAsState(initial = true)
     val storedLayers by prefs.layersFlow.collectAsState(initial = emptyList())
+    val standardLayers by prefs.standardLayersFlow.collectAsState(initial = emptyList())
+    val standardCompact by prefs.standardCompactFlow.collectAsState(initial = true)
     val storedCombos by prefs.combosFlow.collectAsState(initial = emptyList())
     val storedMacros by prefs.macrosFlow.collectAsState(initial = emptyList())
 
     val currentInputMode by service.currentInputMode
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
+    val screenHeightDp = configuration.screenHeightDp
 
-    val isSplit = splitModeEnabled || (splitModeAuto && screenWidthDp >= 600)
+    val isPortrait = screenHeightDp >= screenWidthDp
+    val isSplit = splitModeAuto && screenWidthDp >= 600
+    val centerGapRatio = if (isPortrait) portraitCenterGapRatio else landscapeCenterGapRatio
     val keyboardMode = keyboardModeOverride ?: if (isSplit) KeyboardMode.SPLIT else KeyboardMode.STANDARD
-    val keyHeightDp = ((keyboardHeightDp - 24) / 6).coerceIn(32, 56)
+    val keyboardHeightDp = if (keyboardMode == KeyboardMode.SPLIT) splitKeyboardHeightDp else standardKeyboardHeightDp
+    val keyRowCount = if (keyboardMode == KeyboardMode.STANDARD && standardCompact) 4 else 6
+    val keyHeightDp = ((keyboardHeightDp - 16) / keyRowCount).coerceIn(32, 56)
 
-    val engine = remember {
+    val engine = remember(keyboardMode) {
         KeyboardEngine(
             initialSettings = KeyboardSettings(
                 mode = keyboardMode,
+                compactStandardLayout = standardCompact,
                 centerGapRatio = centerGapRatio,
                 keyboardHeightDp = keyboardHeightDp,
                 keyHeightDp = keyHeightDp,
@@ -84,6 +94,7 @@ fun KeyboardView(service: CustomInputMethodService) {
     engine.updateSettings(
         engine.settings.value.copy(
             mode = keyboardMode,
+            compactStandardLayout = standardCompact,
             centerGapRatio = centerGapRatio,
             keyboardHeightDp = keyboardHeightDp,
             keyHeightDp = keyHeightDp,
@@ -92,7 +103,13 @@ fun KeyboardView(service: CustomInputMethodService) {
             hapticEnabled = hapticEnabled
         )
     )
-    engine.setLayers(KeyboardLayouts.defaultLayers + storedLayers.associateBy { it.id })
+    engine.setLayers(
+        if (keyboardMode == KeyboardMode.STANDARD) {
+            StandardKeyboardLayout.defaultLayers + standardLayers.associateBy { it.id }
+        } else {
+            KeyboardLayouts.defaultLayers + storedLayers.associateBy { it.id }
+        }
+    )
     engine.setCombos(storedCombos)
     engine.setMacros(storedMacros)
     engine.setInputModeHandler(service::setInputMode)

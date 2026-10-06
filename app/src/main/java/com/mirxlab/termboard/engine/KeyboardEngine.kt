@@ -66,6 +66,7 @@ class KeyboardEngine(
 
     fun setLayers(newLayers: Map<String, Layer>) {
         _layers.value = newLayers
+        if (_activeLayerId.value !in newLayers) _activeLayerId.value = "BASE"
     }
 
     fun setCombos(newCombos: List<Combo>) {
